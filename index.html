@@ -368,36 +368,16 @@ async function loadJobs(){
     const { data, error } = await db.from('vagas').select('*').order('id', { ascending: false });
     if (error) throw error;
     
-    if (data && data.length > 0) {
-      jobs = data;
-    } else {
-      const r = localStorage.getItem('lnb_jobs');
-      if(r) jobs = JSON.parse(r);
-      else jobs = defaultJobs();
-    }
+    jobs = data || [];
   } catch(e) {
     console.error('Erro ao carregar do Supabase:', e);
-    const r = localStorage.getItem('lnb_jobs');
-    if(r) jobs = JSON.parse(r);
-    else jobs = defaultJobs();
+    jobs = [];
   }
   renderJobs(); updateStats();
 }
 
 async function saveStorage(){
   try{ localStorage.setItem('lnb_jobs', JSON.stringify(jobs)); }catch(e){}
-}
-
-function defaultJobs(){
-  const now = new Date();
-  const d = (offset)=>{ const x=new Date(now); x.setDate(x.getDate()-offset); return x.toISOString().split('T')[0]; };
-  return [
-    {id:1,titulo:"Consultor Financeiro Sénior",empresa:"LNB Consultoria",categoria:"Finanças",local:"Maputo",tipo:"Presencial",contrato:"Efetivo",salario:"85.000 MT",prazo:"2025-05-30",contacto:"rh@lnbconsultoria.co.mz",desc:"Procuramos um profissional experiente para liderar projetos de consultoria financeira junto dos nossos clientes corporativos.",req:"Licenciatura em Finanças ou Gestão\n5+ anos de experiência em consultoria\nCertificação CFA ou equivalente\nDomínio de Excel e ferramentas de análise",publicado:true,destaque:true,data:d(2)},
-    {id:2,titulo:"Analista de Contabilidade",empresa:"LNB Consultoria",categoria:"Contabilidade",local:"Maputo",tipo:"Híbrido",contrato:"Efetivo",salario:"45.000 MT",prazo:"2025-05-15",contacto:"recrutamento@lnbconsultoria.co.mz",desc:"Vaga para analista de contabilidade responsável pelo processamento e revisão de demonstrações financeiras.",req:"Licenciatura em Contabilidade\n2+ anos de experiência\nConhecimento de IFRS\nSoftware de contabilidade",publicado:true,destaque:false,data:d(5)},
-    {id:3,titulo:"Especialista em Recursos Humanos",empresa:"LNB Consultoria",categoria:"Recursos Humanos",local:"Beira",tipo:"Presencial",contrato:"Efetivo",salario:"50.000 MT",prazo:"2025-06-01",contacto:"rh@lnbconsultoria.co.mz",desc:"Gestão do ciclo completo de RH: recrutamento, onboarding, desempenho e cultura organizacional.",req:"Licenciatura em RH ou Psicologia\n3+ anos em gestão de pessoas\nConhecimento da legislação laboral moçambicana",publicado:true,destaque:false,data:d(1)},
-    {id:4,titulo:"Desenvolvedor de Software",empresa:"LNB Tech",categoria:"Tecnologia",local:"Remoto",tipo:"Remoto",contrato:"Freelance",salario:"",prazo:"2025-05-20",contacto:"tech@lnbconsultoria.co.mz",desc:"Desenvolvimento e manutenção de sistemas internos de gestão financeira.",req:"React ou Vue.js\nNode.js / Python\n3+ anos de experiência\nPortfólio obrigatório",publicado:true,destaque:true,data:d(0)},
-    {id:5,titulo:"Advogado Corporativo",empresa:"LNB Jurídico",categoria:"Jurídico",local:"Maputo",tipo:"Presencial",contrato:"Efetivo",salario:"70.000 MT",prazo:"2025-05-25",contacto:"juridico@lnbconsultoria.co.mz",desc:"Assessoria jurídica em contratos, compliance e questões societárias para clientes do setor financeiro.",req:"Licenciatura em Direito\nInscrição na OAM\n4+ anos em direito corporativo",publicado:false,destaque:false,data:d(10)},
-  ];
 }
 
 function isNew(dateStr){
