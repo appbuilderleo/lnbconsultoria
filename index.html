@@ -134,6 +134,42 @@ nav button:hover{background:var(--blue-mid)}
 .login-card input:focus{border-color:var(--blue)}
 .login-card button{width:100%;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:var(--radius);font-size:.95rem;font-weight:600;cursor:pointer}
 .login-card .err{color:var(--red);font-size:.82rem;margin-bottom:.75rem;display:none}
+
+/* RESPONSIVIDADE */
+@media (max-width: 768px) {
+  nav { padding: 0 1rem; }
+  .hero { padding: 3rem 1rem 2rem; }
+  .hero h1 { font-size: 1.5rem; }
+  .search-bar { flex-direction: column; background: transparent; box-shadow: none; gap: 8px; }
+  .search-bar input { border-radius: var(--radius); box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+  .search-bar button { border-radius: var(--radius); width: 100%; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+  
+  .filters-bar { padding: 0.75rem 1rem; flex-direction: column; align-items: stretch; gap: 8px; }
+  .filters-bar select { width: 100%; }
+  .filter-count { margin-left: 0; text-align: center; margin-top: 0.25rem; }
+  
+  .jobs-section { padding: 1.5rem 1rem; }
+  
+  .modal { padding: 1.5rem; margin: 1rem; max-height: 95vh; }
+  .modal-meta { flex-direction: column; gap: 0.5rem; }
+  
+  .admin-layout { grid-template-columns: 1fr; }
+  .admin-sidebar { padding: 0; display: flex; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar-item { padding: 0.8rem 1rem; white-space: nowrap; border-right: none; border-bottom: 3px solid transparent; }
+  .sidebar-item.active { border-right: none; border-bottom: 3px solid var(--blue); }
+  .admin-sidebar > div:last-child { margin-top: 0; margin-left: auto; padding: 0.8rem 1rem; border-top: none; display: flex; align-items: center; }
+  
+  .admin-content { padding: 1rem; }
+  .admin-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  
+  .admin-table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+
+@media (max-width: 480px) {
+  .card-meta { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
