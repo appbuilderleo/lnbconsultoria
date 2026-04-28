@@ -361,11 +361,11 @@ let editId = null;
 // Configuração Supabase
 const supabaseUrl = 'https://ijyomvedzkhqecedahqx.supabase.co';
 const supabaseKey = 'sb_publishable_qLgrJgva6Mq6onpX-1tZUQ_R-pS_9Dn';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const db = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 async function loadJobs(){
   try {
-    const { data, error } = await supabase.from('vagas').select('*').order('id', { ascending: false });
+    const { data, error } = await db.from('vagas').select('*').order('id', { ascending: false });
     if (error) throw error;
     
     if (data && data.length > 0) {
@@ -634,13 +634,13 @@ async function saveJob(){
   
   try {
     if(editId){
-      const { error } = await supabase.from('vagas').update(data).eq('id', editId);
+      const { error } = await db.from('vagas').update(data).eq('id', editId);
       if (error) throw error;
       const idx=jobs.findIndex(j=>j.id===editId);
       jobs[idx]={...jobs[idx],...data};
       editId=null;
     } else {
-      const { data: insertedData, error } = await supabase.from('vagas').insert([data]).select();
+      const { data: insertedData, error } = await db.from('vagas').insert([data]).select();
       if (error) throw error;
       if (insertedData && insertedData.length > 0) {
         jobs.push(insertedData[0]);
@@ -666,7 +666,7 @@ async function togglePub(id){
   if(j){ 
     const newStatus = !j.publicado;
     try {
-      const { error } = await supabase.from('vagas').update({ publicado: newStatus }).eq('id', id);
+      const { error } = await db.from('vagas').update({ publicado: newStatus }).eq('id', id);
       if(error) throw error;
       j.publicado = newStatus;
     } catch(e) {
@@ -693,7 +693,7 @@ function closeConfirmModal(){
 async function executeDelete(){
   if(jobToDelete === null) return;
   try {
-    const { error } = await supabase.from('vagas').delete().eq('id', jobToDelete);
+    const { error } = await db.from('vagas').delete().eq('id', jobToDelete);
     if(error) throw error;
     jobs=jobs.filter(j=>j.id!==jobToDelete);
   } catch(e) {
