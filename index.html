@@ -176,6 +176,7 @@ nav button:hover{background:var(--blue-mid)}
   .card-meta { grid-template-columns: 1fr; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -357,12 +358,29 @@ const PASS = "lnb2024";
 let jobs = [];
 let editId = null;
 
+// Configuração Supabase
+const supabaseUrl = 'https://ijyomvedzkhqecedahqx.supabase.co';
+const supabaseKey = 'sb_publishable_qLgrJgva6Mq6onpX-1tZUQ_R-pS_9Dn';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 async function loadJobs(){
-  try{
+  try {
+    const { data, error } = await supabase.from('vagas').select('*').order('id', { ascending: false });
+    if (error) throw error;
+    
+    if (data && data.length > 0) {
+      jobs = data;
+    } else {
+      const r = localStorage.getItem('lnb_jobs');
+      if(r) jobs = JSON.parse(r);
+      else jobs = defaultJobs();
+    }
+  } catch(e) {
+    console.error('Erro ao carregar do Supabase:', e);
     const r = localStorage.getItem('lnb_jobs');
     if(r) jobs = JSON.parse(r);
-    else { jobs = defaultJobs(); await saveStorage(); }
-  }catch(e){ jobs = defaultJobs(); }
+    else jobs = defaultJobs();
+  }
   renderJobs(); updateStats();
 }
 
@@ -613,14 +631,31 @@ async function saveJob(){
     publicado:true,
     data:new Date().toISOString().split('T')[0]
   };
-  if(editId){
-    const idx=jobs.findIndex(j=>j.id===editId);
-    jobs[idx]={...jobs[idx],...data};
-    editId=null;
-  } else {
-    data.id=Date.now();
-    jobs.push(data);
+  
+  try {
+    if(editId){
+      const { error } = await supabase.from('vagas').update(data).eq('id', editId);
+      if (error) throw error;
+      const idx=jobs.findIndex(j=>j.id===editId);
+      jobs[idx]={...jobs[idx],...data};
+      editId=null;
+    } else {
+      const { data: insertedData, error } = await supabase.from('vagas').insert([data]).select();
+      if (error) throw error;
+      if (insertedData && insertedData.length > 0) {
+        jobs.push(insertedData[0]);
+      } else {
+        data.id=Date.now();
+        jobs.push(data);
+      }
+    }
+  } catch (e) {
+    console.error("Erro no Supabase:", e);
+    alert("Houve um erro ao guardar na base de dados online. Será guardado localmente (Pode ser necessário criar a tabela 'vagas' no Supabase).");
+    if(!editId) { data.id=Date.now(); jobs.push(data); }
+    else { const idx=jobs.findIndex(j=>j.id===editId); jobs[idx]={...jobs[idx],...data}; editId=null; }
   }
+  
   await saveStorage();
   renderJobs();
   adminTab('vagas');
@@ -628,7 +663,19 @@ async function saveJob(){
 
 async function togglePub(id){
   const j=jobs.find(x=>x.id===id);
-  if(j){ j.publicado=!j.publicado; await saveStorage(); renderJobs(); renderAdminTable(); updateStats(); }
+  if(j){ 
+    const newStatus = !j.publicado;
+    try {
+      const { error } = await supabase.from('vagas').update({ publicado: newStatus }).eq('id', id);
+      if(error) throw error;
+      j.publicado = newStatus;
+    } catch(e) {
+      console.error(e);
+      alert("Erro ao atualizar base de dados online.");
+      j.publicado = newStatus;
+    }
+    await saveStorage(); renderJobs(); renderAdminTable(); updateStats(); 
+  }
 }
 
 let jobToDelete = null;
@@ -645,7 +692,15 @@ function closeConfirmModal(){
 
 async function executeDelete(){
   if(jobToDelete === null) return;
-  jobs=jobs.filter(j=>j.id!==jobToDelete);
+  try {
+    const { error } = await supabase.from('vagas').delete().eq('id', jobToDelete);
+    if(error) throw error;
+    jobs=jobs.filter(j=>j.id!==jobToDelete);
+  } catch(e) {
+    console.error(e);
+    alert("Erro ao deletar da base de dados online.");
+    jobs=jobs.filter(j=>j.id!==jobToDelete);
+  }
   await saveStorage();
   renderJobs();
   renderAdminTable();
