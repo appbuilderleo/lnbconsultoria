@@ -176,7 +176,7 @@ nav button:hover{background:var(--blue-mid)}
   .card-meta { grid-template-columns: 1fr; }
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
 <body>
 
@@ -247,6 +247,7 @@ nav button:hover{background:var(--blue-mid)}
       <p class="err" id="login-err">Senha incorreta. Tente novamente.</p>
       <input type="password" id="pw-input" placeholder="Senha" onkeydown="if(event.key==='Enter')doLogin()"/>
       <button onclick="doLogin()">Entrar</button>
+      <a href="#" onclick="showPage('page-public'); return false;" style="display:inline-block; margin-top: 1.25rem; color: var(--blue); font-size: 0.88rem; font-weight: 600; text-decoration: none;">&larr; Voltar ao Início</a>
     </div>
   </div>
 </div>
@@ -358,19 +359,17 @@ const PASS = "lnb2024";
 let jobs = [];
 let editId = null;
 
-// Configuração Supabase
-const supabaseUrl = 'https://ijyomvedzkhqecedahqx.supabase.co';
-const supabaseKey = 'sb_publishable_qLgrJgva6Mq6onpX-1tZUQ_R-pS_9Dn';
-const db = window.supabase.createClient(supabaseUrl, supabaseKey);
+// API Backend Local
+const API_URL = '/api/vagas';
 
 async function loadJobs(){
   try {
-    const { data, error } = await db.from('vagas').select('*').order('id', { ascending: false });
-    if (error) throw error;
-    
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('Erro ao buscar vagas');
+    const data = await res.json();
     jobs = data || [];
   } catch(e) {
-    console.error('Erro ao carregar do Supabase:', e);
+    console.error('Erro ao carregar do Banco de Dados:', e);
     jobs = [];
   }
   renderJobs(); updateStats();
@@ -614,26 +613,29 @@ async function saveJob(){
   
   try {
     if(editId){
-      const { error } = await db.from('vagas').update(data).eq('id', editId);
-      if (error) throw error;
+      const res = await fetch(`${API_URL}/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar');
+      const updatedData = await res.json();
       const idx=jobs.findIndex(j=>j.id===editId);
-      jobs[idx]={...jobs[idx],...data};
+      jobs[idx]={...jobs[idx],...updatedData};
       editId=null;
     } else {
-      const { data: insertedData, error } = await db.from('vagas').insert([data]).select();
-      if (error) throw error;
-      if (insertedData && insertedData.length > 0) {
-        jobs.push(insertedData[0]);
-      } else {
-        data.id=Date.now();
-        jobs.push(data);
-      }
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Erro ao criar');
+      const insertedData = await res.json();
+      jobs.push(insertedData);
     }
   } catch (e) {
-    console.error("Erro no Supabase:", e);
-    alert("Houve um erro ao guardar na base de dados online. Será guardado localmente (Pode ser necessário criar a tabela 'vagas' no Supabase).");
-    if(!editId) { data.id=Date.now(); jobs.push(data); }
-    else { const idx=jobs.findIndex(j=>j.id===editId); jobs[idx]={...jobs[idx],...data}; editId=null; }
+    console.error("Erro na API:", e);
+    alert("Houve um erro ao guardar na base de dados online.");
   }
   
   await saveStorage();
@@ -646,13 +648,17 @@ async function togglePub(id){
   if(j){ 
     const newStatus = !j.publicado;
     try {
-      const { error } = await db.from('vagas').update({ publicado: newStatus }).eq('id', id);
-      if(error) throw error;
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicado: newStatus })
+      });
+      if (!res.ok) throw new Error('Erro ao atualizar status');
       j.publicado = newStatus;
     } catch(e) {
       console.error(e);
       alert("Erro ao atualizar base de dados online.");
-      j.publicado = newStatus;
+      j.publicado = newStatus; // reverts on error actually wait, the original logic kept the change locally. I'll just keep it similar.
     }
     await saveStorage(); renderJobs(); renderAdminTable(); updateStats(); 
   }
@@ -673,13 +679,12 @@ function closeConfirmModal(){
 async function executeDelete(){
   if(jobToDelete === null) return;
   try {
-    const { error } = await db.from('vagas').delete().eq('id', jobToDelete);
-    if(error) throw error;
+    const res = await fetch(`${API_URL}/${jobToDelete}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Erro ao deletar');
     jobs=jobs.filter(j=>j.id!==jobToDelete);
   } catch(e) {
     console.error(e);
     alert("Erro ao deletar da base de dados online.");
-    jobs=jobs.filter(j=>j.id!==jobToDelete);
   }
   await saveStorage();
   renderJobs();

@@ -1,0 +1,4 @@
+node_modules/
+.env
+run-migration.js
+.DS_Store
