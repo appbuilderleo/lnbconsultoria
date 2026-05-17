@@ -422,7 +422,7 @@ function renderJobs(){
     const av=avatarLetters(j.empresa);
     const pr=prazoInfo(j.prazo);
     const tipoKey=j.tipo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return`<div class="job-card${j.destaque?' featured':''}" onclick="openModal(${j.id})">
+    return`<div class="job-card${j.destaque?' featured':''}" onclick="openModal('${j.id}')">
       <div class="card-top">
         <div class="card-header">
           <div class="company-avatar">${av}</div>
@@ -457,7 +457,7 @@ function renderJobs(){
 }
 
 function openModal(id){
-  const j=jobs.find(x=>x.id===id);
+  const j=jobs.find(x=>String(x.id) === String(id));
   if(!j)return;
   const reqs=j.req?j.req.split('\n').filter(Boolean).map(r=>`<li>${r}</li>`).join(''):'';
   document.getElementById('modal-body').innerHTML=`
@@ -556,9 +556,9 @@ function renderAdminTable(){
       <td><span class="status-badge ${j.publicado?'pub':'unpub'}">${j.publicado?'Publicada':'Rascunho'}</span></td>
       <td>${j.destaque?'⭐ Sim':'–'}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-primary" onclick="editJob(${j.id})">Editar</button>
-        <button class="btn btn-sm" style="background:${j.publicado?'#f59e0b':'var(--green)'};color:#fff" onclick="togglePub(${j.id})">${j.publicado?'Despublicar':'Publicar'}</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteJob(${j.id})">Eliminar</button>
+        <button class="btn btn-sm btn-primary" onclick="editJob('${j.id}')">Editar</button>
+        <button class="btn btn-sm" style="background:${j.publicado?'#f59e0b':'var(--green)'};color:#fff" onclick="togglePub('${j.id}')">${j.publicado?'Despublicar':'Publicar'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteJob('${j.id}')">Eliminar</button>
       </td>
     </tr>
   `).join('');
@@ -572,7 +572,7 @@ function clearForm(){
 }
 
 function editJob(id){
-  const j=jobs.find(x=>x.id===id);
+  const j=jobs.find(x=>String(x.id) === String(id));
   if(!j)return;
   editId=id;
   adminTab('nova');
@@ -620,7 +620,7 @@ async function saveJob(){
       });
       if (!res.ok) throw new Error('Erro ao atualizar');
       const updatedData = await res.json();
-      const idx=jobs.findIndex(j=>j.id===editId);
+      const idx=jobs.findIndex(j=>String(j.id) === String(editId));
       jobs[idx]={...jobs[idx],...updatedData};
       editId=null;
     } else {
@@ -644,7 +644,7 @@ async function saveJob(){
 }
 
 async function togglePub(id){
-  const j=jobs.find(x=>x.id===id);
+  const j=jobs.find(x=>String(x.id) === String(id));
   if(j){ 
     const newStatus = !j.publicado;
     try {
@@ -681,7 +681,7 @@ async function executeDelete(){
   try {
     const res = await fetch(`${API_URL}/${jobToDelete}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Erro ao deletar');
-    jobs=jobs.filter(j=>j.id!==jobToDelete);
+    jobs=jobs.filter(j=>String(j.id) !== String(jobToDelete));
   } catch(e) {
     console.error(e);
     alert("Erro ao deletar da base de dados online.");
