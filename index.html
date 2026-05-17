@@ -260,6 +260,7 @@ nav button:hover{background:var(--blue-mid)}
       <div class="sidebar-item active" id="tab-dash" onclick="adminTab('dash')">📊 Dashboard</div>
       <div class="sidebar-item" id="tab-vagas" onclick="adminTab('vagas')">📋 Vagas</div>
       <div class="sidebar-item" id="tab-nova" onclick="adminTab('nova')">➕ Nova Vaga</div>
+      <div class="sidebar-item" id="tab-config" onclick="adminTab('config')">⚙ Configurações</div>
       <div style="padding:1.5rem 1.5rem 0;border-top:1px solid var(--border);margin-top:auto">
         <div onclick="logout()" style="cursor:pointer;font-size:.85rem;color:var(--muted)">← Sair</div>
       </div>
@@ -327,6 +328,25 @@ nav button:hover{background:var(--blue-mid)}
           <button class="btn" style="background:var(--gray);color:var(--text)" onclick="adminTab('vagas')">Cancelar</button>
         </div>
       </div>
+      
+      <!-- CONFIGURAÇÕES -->
+      <div id="adm-config" style="display:none">
+        <div class="admin-header"><h2>Configurações</h2></div>
+        
+        <div class="form-grid" style="max-width: 400px;">
+          <div class="form-group full">
+            <h3 style="font-size:1rem;margin-bottom:10px;">Alterar Senha do Admin</h3>
+            <p class="err" id="config-err" style="color:var(--red);font-size:.82rem;margin-bottom:.75rem;display:none;"></p>
+            <p class="success" id="config-suc" style="color:var(--green);font-size:.82rem;margin-bottom:.75rem;display:none;"></p>
+          </div>
+          <div class="form-group full"><label>Senha Atual</label><input type="password" id="c-senha-atual" placeholder="Sua senha atual"/></div>
+          <div class="form-group full"><label>Nova Senha</label><input type="password" id="c-senha-nova" placeholder="Nova senha"/></div>
+          <div class="form-group full"><label>Confirmar Nova Senha</label><input type="password" id="c-senha-conf" placeholder="Repita a nova senha"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="alterarSenha()">Atualizar Senha</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -355,7 +375,6 @@ nav button:hover{background:var(--blue-mid)}
 </div>
 
 <script>
-const PASS = "lnb2024";
 let jobs = [];
 let editId = null;
 
@@ -493,15 +512,27 @@ function showPage(id){
   document.getElementById(id).classList.add('active');
 }
 
-function doLogin(){
+async function doLogin(){
   const pw=document.getElementById('pw-input').value;
-  if(pw===PASS){
-    sessionStorage.setItem('lnb_admin','1');
-    document.getElementById('pw-input').value='';
-    document.getElementById('login-err').style.display='none';
-    showPage('page-admin');
-    adminTab('dash');
-  } else {
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senha: pw })
+    });
+    const data = await res.json();
+    if(res.ok && data.success){
+      sessionStorage.setItem('lnb_admin','1');
+      document.getElementById('pw-input').value='';
+      document.getElementById('login-err').style.display='none';
+      showPage('page-admin');
+      adminTab('dash');
+    } else {
+      document.getElementById('login-err').textContent = data.error || 'Senha incorreta. Tente novamente.';
+      document.getElementById('login-err').style.display='block';
+    }
+  } catch(e) {
+    document.getElementById('login-err').textContent = 'Erro ao conectar com servidor.';
     document.getElementById('login-err').style.display='block';
   }
 }
@@ -512,19 +543,81 @@ function logout(){
 }
 
 function adminTab(tab){
-  ['dash','vagas','nova'].forEach(t=>{
-    document.getElementById('adm-'+t).style.display='none';
-    document.getElementById('tab-'+t).classList.remove('active');
+  ['dash','vagas','nova','config'].forEach(t=>{
+    const el = document.getElementById('adm-'+t);
+    if(el) el.style.display='none';
+    const tabEl = document.getElementById('tab-'+t);
+    if(tabEl) tabEl.classList.remove('active');
   });
-  document.getElementById('adm-'+tab).style.display='block';
-  document.getElementById('tab-'+tab).classList.add('active');
+  const activeEl = document.getElementById('adm-'+tab);
+  if(activeEl) activeEl.style.display='block';
+  const activeTabEl = document.getElementById('tab-'+tab);
+  if(activeTabEl) activeTabEl.classList.add('active');
+  
   if(tab==='dash'){updateStats();renderDashTable();}
   if(tab==='vagas')renderAdminTable();
   if(tab==='nova'&&!editId)clearForm();
+  if(tab==='config'){
+      document.getElementById('c-senha-atual').value='';
+      document.getElementById('c-senha-nova').value='';
+      document.getElementById('c-senha-conf').value='';
+      document.getElementById('config-err').style.display='none';
+      document.getElementById('config-suc').style.display='none';
+  }
   
   // Close drawer on mobile
   document.querySelector('.admin-sidebar').classList.remove('open');
   document.querySelector('.sidebar-overlay').classList.remove('open');
+}
+
+async function alterarSenha(){
+  const atual = document.getElementById('c-senha-atual').value;
+  const nova = document.getElementById('c-senha-nova').value;
+  const conf = document.getElementById('c-senha-conf').value;
+  const err = document.getElementById('config-err');
+  const suc = document.getElementById('config-suc');
+  
+  err.style.display = 'none';
+  suc.style.display = 'none';
+  
+  if(!atual || !nova || !conf){
+    err.textContent = "Preencha todos os campos.";
+    err.style.display = 'block';
+    return;
+  }
+  if(nova !== conf){
+    err.textContent = "A nova senha e a confirmação não coincidem.";
+    err.style.display = 'block';
+    return;
+  }
+  if(nova.length < 6){
+    err.textContent = "A nova senha deve ter pelo menos 6 caracteres.";
+    err.style.display = 'block';
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/admin/senha', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senhaAtual: atual, novaSenha: nova })
+    });
+    const data = await res.json();
+    
+    if(res.ok && data.success){
+      suc.textContent = "Senha alterada com sucesso!";
+      suc.style.display = 'block';
+      document.getElementById('c-senha-atual').value='';
+      document.getElementById('c-senha-nova').value='';
+      document.getElementById('c-senha-conf').value='';
+    } else {
+      err.textContent = data.error || 'Erro ao alterar senha.';
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Erro ao conectar com servidor.';
+    err.style.display = 'block';
+  }
 }
 
 function toggleDrawer(){

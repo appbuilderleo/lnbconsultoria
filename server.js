@@ -34,10 +34,51 @@ const client = new Client({
 });
 
 client.connect()
-    .then(() => console.log('✅ Conectado ao CockroachDB!'))
+    .then(() => {
+        console.log('✅ Conectado ao CockroachDB!');
+        return client.query(`
+            CREATE TABLE IF NOT EXISTS admin_config (
+                id INT PRIMARY KEY,
+                senha TEXT NOT NULL
+            );
+            INSERT INTO admin_config (id, senha) VALUES (1, 'lnb2024') ON CONFLICT DO NOTHING;
+        `);
+    })
     .catch(err => console.error('❌ Erro ao conectar ao banco:', err));
 
 // Rotas da API
+
+// Login do Admin
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { senha } = req.body;
+        const result = await client.query('SELECT senha FROM admin_config WHERE id = 1');
+        if (result.rows.length > 0 && result.rows[0].senha === senha) {
+            res.json({ success: true });
+        } else {
+            res.status(401).json({ error: 'Senha incorreta' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
+// Alterar Senha do Admin
+app.put('/api/admin/senha', async (req, res) => {
+    try {
+        const { senhaAtual, novaSenha } = req.body;
+        const result = await client.query('SELECT senha FROM admin_config WHERE id = 1');
+        if (result.rows.length === 0 || result.rows[0].senha !== senhaAtual) {
+            return res.status(401).json({ error: 'Senha atual incorreta' });
+        }
+        await client.query('UPDATE admin_config SET senha = $1 WHERE id = 1', [novaSenha]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
 
 // 1. Obter todas as vagas
 app.get('/api/vagas', async (req, res) => {
